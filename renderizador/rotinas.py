@@ -22,12 +22,36 @@ def polypoint2D(point, colors):
     # O parâmetro colors é um dicionário com os tipos cores possíveis, para o Polypoint2D
     # você pode assumir o desenho dos pontos com a cor emissiva (emissiveColor).
 
-    # O print abaixo é só para vocês verificarem o funcionamento, DEVE SER REMOVIDO.
-    print("Polypoint2D : pontos = {0}".format(point)) # imprime no terminal pontos
-    print("Polypoint2D : colors = {0}".format(colors)) # imprime no terminal as cores
-    # Exemplo:
-    gpu.GPU.set_pixel(3, 1, 255, 0, 0) # altera um pixel da imagem (u, v, r, g, b)
+    import numpy as np
+    for p_index in range(len(point[::2])):
+        r, g, b = np.array(colors["emissiveColor"]) * 255 # separando o rgb e convertendo para escala 8bit
+        gpu.GPU.set_pixel(int(point[p_index*2]), int(point[p_index*2+1]), r, g, b) # altera um pixel da imagem (u, v, r, g, b)
     # cuidado com as cores, o X3D especifica de (0,1) e o Framebuffer de (0,255)
+
+def linha_beusebu(x1, y1, x2, y2, r, g, b):
+    dx = abs(x2 - x1)
+    dy = abs(y2 - y1)
+    vx = -1 if x1 > x2 else 1
+    vy = -1 if y1 > y2 else 1
+    if dx > dy:
+        d = dx / 2.0
+        while x1 != x2:
+            gpu.GPU.set_pixel(x1, y1, r, g, b)
+            d -= dy
+            x1 += vx
+            if d < 0:
+                y1 += vy
+                d += dx
+    else:
+        d = dy / 2.0
+        while y1 != y2:
+            gpu.GPU.set_pixel(x1, y1, r, g, b)
+            d -= dx
+            y1 += vy
+            if d < 0:
+                x1 += vx
+                d += dy
+    gpu.GPU.set_pixel(x1, y1, r, g, b)
 
 # web3d.org/documents/specifications/19775-1/V3.0/Part01/components/geometry2D.html#Polyline2D
 def polyline2D(lineSegments, colors):
@@ -42,12 +66,27 @@ def polyline2D(lineSegments, colors):
     # O parâmetro colors é um dicionário com os tipos cores possíveis, para o Polyline2D
     # você pode assumir o desenho das linhas com a cor emissiva (emissiveColor).
 
-    print("Polyline2D : lineSegments = {0}".format(lineSegments)) # imprime no terminal
-    print("Polyline2D : colors = {0}".format(colors)) # imprime no terminal as cores
+    # print("Polyline2D : lineSegments = {0}".format(lineSegments)) # imprime no terminal
+    # print("Polyline2D : colors = {0}".format(colors)) # imprime no terminal as cores
     # Exemplo:
-    pos_x = gpu.GPU.width//2
-    pos_y = gpu.GPU.height//2
-    gpu.GPU.set_pixel(pos_x, pos_y, 255, 0, 0) # altera um pixel da imagem (u, v, r, g, b)
+    # pos_x = gpu.GPU.width//2
+    # pos_y = gpu.GPU.height//2
+    # gpu.GPU.set_pixel(pos_x, pos_y, 255, 0, 0) # altera um pixel da imagem (u, v, r, g, b)
+    import numpy as np
+    r, g, b = np.array(colors["emissiveColor"]) * 255 # separando o rgb e convertendo para escala 8bit
+    for i in range(len(lineSegments[::4])):
+        x1, y1, x2, y2 = lineSegments[i:i+4]
+        linha_beusebu(int(x1), int(y1), int(x2), int(y2), r, g, b)
+
+def posicao_na_reta(x, y, x0, y0, x1, y1):
+    return (x - x0) * (y1 - y0) - (y - y0) * (x1 - x0)
+
+def ja_ta_tudo_dentro_question_mark(xx, yy, x0, y0, x1, y1, x2, y2):
+    l0 = posicao_na_reta(xx, yy, x0, y0, x1, y1)
+    l1 = posicao_na_reta(xx, yy, x1, y1, x2, y2)
+    l2 = posicao_na_reta(xx, yy, x2, y2, x0, y0)
+
+    return l0 > 0 and l1 > 0 and l2 > 0
 
 # web3d.org/documents/specifications/19775-1/V3.0/Part01/components/geometry2D.html#TriangleSet2D
 def triangleSet2D(vertices, colors):
@@ -59,10 +98,19 @@ def triangleSet2D(vertices, colors):
     # quantidade de pontos é sempre multiplo de 3, ou seja, 6 valores ou 12 valores, etc.
     # O parâmetro colors é um dicionário com os tipos cores possíveis, para o TriangleSet2D
     # você pode assumir o desenho das linhas com a cor emissiva (emissiveColor).
-    print("TriangleSet2D : vertices = {0}".format(vertices)) # imprime no terminal
-    print("TriangleSet2D : colors = {0}".format(colors)) # imprime no terminal as cores
-    # Exemplo:
-    gpu.GPU.set_pixel(24, 8, 255, 255, 0) # altera um pixel da imagem (u, v, r, g, b)
+    # print("TriangleSet2D : vertices = {0}".format(vertices)) # imprime no terminal
+    # print("TriangleSet2D : colors = {0}".format(colors)) # imprime no terminal as cores
+    # # Exemplo:
+    # gpu.GPU.set_pixel(24, 8, 255, 255, 0) # altera um pixel da imagem (u, v, r, g, b)
+    import numpy as np
+    r, g, b = np.array(colors["emissiveColor"]) * 255 # separando o rgb e convertendo para escala 8bit
+
+    for i in range(len(vertices[::6])):
+        x0, y0, x1, y1, x2, y2 = vertices[i:i+6]
+        for si in range(gpu.GPU.width):
+            for sj in range(gpu.GPU.height):
+                if ja_ta_tudo_dentro_question_mark(si + 0.5, sj + 0.5, x0, y0, x1, y1, x2, y2):
+                    gpu.GPU.set_pixel(si, sj, r, g, b)
 
 def triangleSet(point, colors):
     """Função usada para renderizar TriangleSet."""
